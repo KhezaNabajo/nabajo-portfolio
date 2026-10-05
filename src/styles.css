@@ -122,3 +122,11 @@ footer { text-align:center; padding:25px; font-size:13px; color:var(--muted); bo
   .contact h2 { font-size:52px; }
   .grid { grid-template-columns:1fr; }
 }
+/* Add at the bottom of styles.css */
+.hero, .featured, .about, .capabilities, .contact, footer, nav {
+  pointer-events: none;
+}
+
+nav a, nav button, .hero-actions, .hero-image, .project, .more-link, .about-content, .skills, .contact a, .social-icons {
+  pointer-events: auto;
+}

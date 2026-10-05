@@ -19,6 +19,171 @@ const SKILLS_LIST = [
   "HARDWARE & PROTOCOLS"
 ];
 
+// CursorGrid Canvas Background Component
+function CursorGrid({
+  cellSize = 60,
+  color = "#CD99DB",
+  radius = 160,
+  falloff = "smooth",
+  holdTime = 300,
+  fadeDuration = 700,
+  lineWidth = 1.2,
+  maxOpacity = 0.8,
+  fillOpacity = 0.08,
+  gridOpacity = 0.05,
+  clickPulse = true,
+  pulseSpeed = 500,
+}) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId;
+    let width = (canvas.width = canvas.offsetWidth);
+    let height = (canvas.height = canvas.offsetHeight);
+
+    const mouse = { x: -1000, y: -1000, lastMove: 0 };
+    const pulses = [];
+
+    const handleResize = () => {
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    };
+
+    const handleMouseMove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.lastMove = performance.now();
+    };
+
+    const handleMouseLeave = () => {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    };
+
+    const handleClick = (e) => {
+      if (!clickPulse) return;
+      const rect = canvas.getBoundingClientRect();
+      pulses.push({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        startTime: performance.now(),
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseleave", handleMouseLeave);
+    canvas.addEventListener("click", handleClick);
+
+    const draw = (now) => {
+      ctx.clearRect(0, 0, width, height);
+
+      const cols = Math.ceil(width / cellSize);
+      const rows = Math.ceil(height / cellSize);
+
+      // Base Static Grid
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = gridOpacity;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= cols; i++) {
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, height);
+      }
+      for (let j = 0; j <= rows; j++) {
+        ctx.moveTo(0, j * cellSize);
+        ctx.lineTo(width, j * cellSize);
+      }
+      ctx.stroke();
+
+      // Mouse Hover Interaction Logic
+      const timeSinceMove = now - mouse.lastMove;
+      let mouseAlpha = 1;
+
+      if (timeSinceMove > holdTime) {
+        const fadeProgress = (timeSinceMove - holdTime) / fadeDuration;
+        mouseAlpha = Math.max(0, 1 - fadeProgress);
+      }
+
+      // Draw Grid Cells & Highlights
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          const cellX = i * cellSize + cellSize / 2;
+          const cellY = j * cellSize + cellSize / 2;
+
+          const distMouse = Math.hypot(cellX - mouse.x, cellY - mouse.y);
+          let intensity = 0;
+
+          if (distMouse < radius && mouseAlpha > 0) {
+            const norm = distMouse / radius;
+            intensity = falloff === "smooth" 
+              ? (1 - norm) * (1 - norm) 
+              : 1 - norm;
+            intensity *= mouseAlpha;
+          }
+
+          // Pulse Effect on Click
+          for (let p = pulses.length - 1; p >= 0; p--) {
+            const pulse = pulses[p];
+            const pulseAge = now - pulse.startTime;
+            if (pulseAge > pulseSpeed) {
+              if (i === 0 && j === 0) pulses.splice(p, 1);
+              continue;
+            }
+            const currentPulseRadius = (pulseAge / pulseSpeed) * (radius * 1.5);
+            const distPulse = Math.hypot(cellX - pulse.x, cellY - pulse.y);
+            const pulseDiff = Math.abs(distPulse - currentPulseRadius);
+            if (pulseDiff < cellSize) {
+              const pulseIntensity = (1 - pulseDiff / cellSize) * (1 - pulseAge / pulseSpeed);
+              intensity = Math.max(intensity, pulseIntensity);
+            }
+          }
+
+          if (intensity > 0) {
+            ctx.fillStyle = color;
+            ctx.globalAlpha = Math.min(maxOpacity, intensity * fillOpacity);
+            ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = Math.min(maxOpacity, intensity);
+            ctx.lineWidth = lineWidth;
+            ctx.strokeRect(i * cellSize, j * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    animationFrameId = requestAnimationFrame(draw);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("mouseleave", handleMouseLeave);
+      canvas.removeEventListener("click", handleClick);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [cellSize, color, radius, falloff, holdTime, fadeDuration, lineWidth, maxOpacity, fillOpacity, gridOpacity, clickPulse, pulseSpeed]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "block",
+      }}
+    />
+  );
+}
+
 function Reveal({ id, className = "", children }) {
   const isVisible = useReveal(id);
   return (
@@ -211,21 +376,52 @@ export default function App() {
   }, [currentPage]);
 
   return (
-    <>
-      <link rel="stylesheet" href="styles.css" />
-      <Navbar isMenuOpen={isMenuOpen} toggleMenu={toggleMenu} scrollToSection={scrollToSection} />
-      {currentPage === "home" ? (
-        <>
-          <Hero />
-          <Featured openAllProjects={openAllProjects} />
-          <About />
-          <Capabilities />
-        </>
-      ) : (
-        <MoreProjects />
-      )}
-      <Contact />
-      <footer><p>&copy; 2026 Kheza Nabajo</p></footer>
-    </>
+    <div style={{ position: "relative", minHeight: "100vh", backgroundColor: "var(--bg)" }}>
+      {/* Fixed CursorGrid background layer */}
+      <div 
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 0,
+          pointerEvents: "auto",
+        }}
+      >
+        <CursorGrid
+          cellSize={60}
+          color="#CD99DB"
+          radius={160}
+          falloff="smooth"
+          holdTime={300}
+          fadeDuration={700}
+          lineWidth={1.2}
+          maxOpacity={0.8}
+          fillOpacity={0.08}
+          gridOpacity={0.05}
+          clickPulse={true}
+          pulseSpeed={500}
+        />
+      </div>
+
+      {/* Foreground Content */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <link rel="stylesheet" href="styles.css" />
+        <Navbar isMenuOpen={isMenuOpen} toggleMenu={toggleMenu} scrollToSection={scrollToSection} />
+        {currentPage === "home" ? (
+          <>
+            <Hero />
+            <Featured openAllProjects={openAllProjects} />
+            <About />
+            <Capabilities />
+          </>
+        ) : (
+          <MoreProjects />
+        )}
+        <Contact />
+        <footer><p>&copy; 2026 Kheza Nabajo</p></footer>
+      </div>
+    </div>
   );
 }
