@@ -1,32 +1,25 @@
 import { useState, useEffect } from "react";
 
-export function useReveal(id) {
-  const [visible, setVisible] = useState(false);
+export function useReveal(elementId) {
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      const element = document.getElementById(elementId);
+      if (!element) return;
 
-    const timer = setTimeout(function() {
-
-      const el = document.getElementById(id);
-      if (!el) return;
-
-      const observer = new IntersectionObserver(function(entries) {
+      const observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
-          setVisible(true);
+          setIsVisible(true);
           observer.disconnect();
         }
       }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
 
-      observer.observe(el);
-
+      observer.observe(element);
     }, 100);
 
-    return function() {
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
+  }, [elementId]);
 
-  }, [id]);
-
-  
-  return visible;
+  return isVisible;
 }
