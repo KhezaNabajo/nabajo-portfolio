@@ -10,16 +10,11 @@ This project includes:
 - contact details and social links
 - downloadable CV
 
-## Demo
-
-Live portfolio: coming soon
-
 ## Tech Stack
 
 - React
 - Vite
 - JavaScript
-- GSAP
 - CSS
 
 ## Features
@@ -91,10 +86,6 @@ npm run build   # create production build
 npm run preview # preview production build locally
 npm run lint    # run ESLint checks
 ```
-
-## About Me
-
-I am an Information Technology student focused on accessible design, networking, and creative problem-solving. This portfolio reflects my work, interests, and skills across design and technical disciplines.
 
 ## Contact
 
